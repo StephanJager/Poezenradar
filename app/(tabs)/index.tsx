@@ -11,14 +11,16 @@ import {
   View,
 } from 'react-native';
 
+import PoezenMap from '../../components/poezen-map';
+
 type CatSighting = {
   id: string;
   catName: string;
   locationLabel: string;
   notes: string;
   spottedAt: string;
-  x: number;
-  y: number;
+  latitude: number;
+  longitude: number;
 };
 
 type Screen = 'map' | 'add' | 'profile' | 'settings';
@@ -30,8 +32,8 @@ const initialSightings: CatSighting[] = [
     locationLabel: 'Vondelpark, Amsterdam',
     notes: 'Zat heel rustig naast de vijver.',
     spottedAt: '10 min geleden',
-    x: 28,
-    y: 34,
+    latitude: 52.358,
+    longitude: 4.8686,
   },
   {
     id: 'sokje',
@@ -39,8 +41,8 @@ const initialSightings: CatSighting[] = [
     locationLabel: 'Kinkerstraat',
     notes: 'Witte pootjes, erg nieuwsgierig.',
     spottedAt: '24 min geleden',
-    x: 68,
-    y: 28,
+    latitude: 52.3643,
+    longitude: 4.8666,
   },
   {
     id: 'noortje',
@@ -48,8 +50,8 @@ const initialSightings: CatSighting[] = [
     locationLabel: 'Da Costabuurt',
     notes: 'Lag in een zonnige vensterbank.',
     spottedAt: '1 uur geleden',
-    x: 44,
-    y: 62,
+    latitude: 52.3661,
+    longitude: 4.8753,
   },
   {
     id: 'tijger',
@@ -57,10 +59,22 @@ const initialSightings: CatSighting[] = [
     locationLabel: 'Overtoom',
     notes: 'Oranje streepjeskat met veel praatjes.',
     spottedAt: '2 uur geleden',
-    x: 76,
-    y: 72,
+    latitude: 52.3613,
+    longitude: 4.8721,
   },
 ];
+
+const AMSTERDAM_CENTER = {
+  latitude: 52.3676,
+  longitude: 4.9041,
+};
+
+function getGeneratedCoordinate(index: number) {
+  return {
+    latitude: AMSTERDAM_CENTER.latitude + ((index % 5) - 2) * 0.004,
+    longitude: AMSTERDAM_CENTER.longitude + (((index * 2) % 5) - 2) * 0.005,
+  };
+}
 
 export default function HomeScreen() {
   const [screen, setScreen] = useState<Screen>('map');
@@ -83,8 +97,7 @@ export default function HomeScreen() {
       locationLabel: locationLabel.trim() || 'Locatie volgt later',
       notes: notes.trim() || 'Geen notities toegevoegd.',
       spottedAt: 'Zojuist gespot',
-      x: 18 + ((index * 17) % 64),
-      y: 20 + ((index * 23) % 58),
+      ...getGeneratedCoordinate(index),
     };
 
     setSightings((current) => [...current, newSighting]);
@@ -166,28 +179,11 @@ function MapScreen({
         />
       </View>
 
-      <View style={styles.mapArea}>
-        <View style={[styles.mapBlob, styles.mapBlobOne]} />
-        <View style={[styles.mapBlob, styles.mapBlobTwo]} />
-        <View style={styles.mapRoad} />
-        <View style={[styles.mapRoad, styles.mapRoadAlt]} />
-        {sightings.map((cat) => (
-          <Pressable
-            accessibilityLabel={`${cat.catName} op de kaart`}
-            key={cat.id}
-            onPress={() => onSelectCat(cat.id)}
-            style={[
-              styles.catPin,
-              {
-                left: `${cat.x}%`,
-                top: `${cat.y}%`,
-              },
-              selectedCatId === cat.id && styles.catPinSelected,
-            ]}>
-            <Text style={styles.catPinText}>🐱</Text>
-          </Pressable>
-        ))}
-      </View>
+      <PoezenMap
+        selectedCatId={selectedCatId}
+        sightings={sightings}
+        onSelectCat={onSelectCat}
+      />
 
       <View style={styles.catCard}>
         <View>
@@ -399,71 +395,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
-  },
-  mapArea: {
-    flex: 1,
-    minHeight: 360,
-    overflow: 'hidden',
-    borderRadius: 30,
-    backgroundColor: '#d9efe4',
-    borderColor: '#badbca',
-    borderWidth: 1,
-    position: 'relative',
-  },
-  mapBlob: {
-    position: 'absolute',
-    backgroundColor: '#c4e5d4',
-    borderRadius: 999,
-  },
-  mapBlobOne: {
-    height: 220,
-    left: -42,
-    top: 42,
-    width: 220,
-  },
-  mapBlobTwo: {
-    bottom: -30,
-    height: 230,
-    right: -58,
-    width: 250,
-  },
-  mapRoad: {
-    position: 'absolute',
-    backgroundColor: '#f7efe3',
-    height: 34,
-    left: -24,
-    right: -24,
-    top: '48%',
-    transform: [{ rotate: '-16deg' }],
-  },
-  mapRoadAlt: {
-    top: '34%',
-    transform: [{ rotate: '32deg' }],
-  },
-  catPin: {
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderColor: '#f0a64f',
-    borderRadius: 24,
-    borderWidth: 3,
-    height: 48,
-    justifyContent: 'center',
-    marginLeft: -24,
-    marginTop: -24,
-    position: 'absolute',
-    shadowColor: '#5e3a22',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    width: 48,
-  },
-  catPinSelected: {
-    backgroundColor: '#ffe0b5',
-    borderColor: '#d86931',
-    transform: [{ scale: 1.08 }],
-  },
-  catPinText: {
-    fontSize: 24,
   },
   catCard: {
     backgroundColor: '#ffffff',

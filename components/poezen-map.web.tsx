@@ -1,44 +1,54 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-type CatSighting = {
-  id: string;
-  catName: string;
-  latitude: number;
-  longitude: number;
-};
+import { getCatDisplayName, getCatPrimaryPhotoUri, getCatProfileCoordinate } from '../data/cats';
+import type { CatProfile } from '../types/cat';
 
 type PoezenMapProps = {
   selectedCatId: string;
-  sightings: CatSighting[];
+  cats: CatProfile[];
   onSelectCat: (catId: string) => void;
+  onMapPress: () => void;
 };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function coordinateToFakeMapPosition(cat: CatSighting) {
+function coordinateToFakeMapPosition(cat: CatProfile) {
+  const coordinate = getCatProfileCoordinate(cat);
+
+  if (!coordinate) {
+    return null;
+  }
+
   return {
-    x: clamp(((cat.longitude - 4.84) / 0.1) * 100, 10, 90),
-    y: clamp(((52.39 - cat.latitude) / 0.06) * 100, 10, 90),
+    x: clamp(((coordinate.longitude - 4.84) / 0.1) * 100, 10, 90),
+    y: clamp(((52.39 - coordinate.latitude) / 0.06) * 100, 10, 90),
   };
 }
 
-export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: PoezenMapProps) {
+export default function PoezenMap({ selectedCatId, cats, onSelectCat, onMapPress }: PoezenMapProps) {
   return (
-    <View style={styles.mapArea}>
+    <Pressable style={styles.mapArea} onPress={onMapPress}>
       <View style={[styles.mapBlob, styles.mapBlobOne]} />
       <View style={[styles.mapBlob, styles.mapBlobTwo]} />
       <View style={styles.mapRoad} />
       <View style={[styles.mapRoad, styles.mapRoadAlt]} />
-      {sightings.map((cat) => {
+      {cats.map((cat) => {
         const position = coordinateToFakeMapPosition(cat);
+        if (!position) {
+          return null;
+        }
+        const photoUri = getCatPrimaryPhotoUri(cat);
 
         return (
           <Pressable
-            accessibilityLabel={`${cat.catName} op de kaart`}
+            accessibilityLabel={`${getCatDisplayName(cat)} op de kaart`}
             key={cat.id}
-            onPress={() => onSelectCat(cat.id)}
+            onPress={(event) => {
+              event.stopPropagation();
+              onSelectCat(cat.id);
+            }}
             style={[
               styles.catPin,
               {
@@ -47,11 +57,16 @@ export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: Poe
               },
               selectedCatId === cat.id && styles.catPinSelected,
             ]}>
-            <Text style={styles.catPinText}>🐱</Text>
+            {photoUri ? (
+              <Image source={{ uri: photoUri }} style={styles.catPinImage} />
+            ) : (
+              <Text style={styles.catPinText}>🐱</Text>
+            )}
+            <View style={styles.catPinTail} />
           </Pressable>
         );
       })}
-    </View>
+    </Pressable>
   );
 }
 
@@ -60,9 +75,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 360,
     overflow: 'hidden',
-    borderRadius: 30,
-    backgroundColor: '#d9efe4',
-    borderColor: '#badbca',
+    borderRadius: 28,
+    backgroundColor: '#e8efe9',
+    borderColor: '#d7ded9',
     borderWidth: 1,
     position: 'relative',
   },
@@ -99,26 +114,39 @@ const styles = StyleSheet.create({
   catPin: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderColor: '#f0a64f',
-    borderRadius: 24,
-    borderWidth: 3,
-    height: 48,
+    borderColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 2,
+    height: 44,
     justifyContent: 'center',
-    marginLeft: -24,
-    marginTop: -24,
+    marginLeft: -22,
+    marginTop: -22,
     position: 'absolute',
-    shadowColor: '#5e3a22',
+    shadowColor: '#1f2933',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
-    shadowRadius: 10,
-    width: 48,
+    shadowRadius: 12,
+    width: 44,
   },
   catPinSelected: {
-    backgroundColor: '#ffe0b5',
-    borderColor: '#d86931',
-    transform: [{ scale: 1.08 }],
+    backgroundColor: '#ff8f3d',
+    borderColor: '#ffffff',
+    transform: [{ scale: 1.12 }],
+  },
+  catPinImage: {
+    borderRadius: 18,
+    height: 36,
+    width: 36,
   },
   catPinText: {
-    fontSize: 24,
+    fontSize: 23,
+  },
+  catPinTail: {
+    backgroundColor: '#ffffff',
+    bottom: -4,
+    height: 10,
+    position: 'absolute',
+    transform: [{ rotate: '45deg' }],
+    width: 10,
   },
 });

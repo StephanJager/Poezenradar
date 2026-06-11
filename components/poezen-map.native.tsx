@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import MapView, { Marker, type Region } from 'react-native-maps';
 
-type CatSighting = {
-  id: string;
-  catName: string;
-  latitude: number;
-  longitude: number;
-};
+import { getCatPrimaryPhotoUri, getCatProfileCoordinate } from '../data/cats';
+import type { CatProfile } from '../types/cat';
 
 type PoezenMapProps = {
   selectedCatId: string;
-  sightings: CatSighting[];
+  cats: CatProfile[];
   onSelectCat: (catId: string) => void;
+  onMapPress: () => void;
 };
 
 const AMSTERDAM_REGION: Region = {
@@ -23,9 +20,10 @@ const AMSTERDAM_REGION: Region = {
   longitudeDelta: 0.055,
 };
 
-export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: PoezenMapProps) {
+export default function PoezenMap({ selectedCatId, cats, onSelectCat, onMapPress }: PoezenMapProps) {
   const [region, setRegion] = useState<Region>(AMSTERDAM_REGION);
   const [permissionMessage, setPermissionMessage] = useState('');
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -36,7 +34,8 @@ export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: Poe
 
         if (permission.status !== 'granted') {
           if (isMounted) {
-            setPermissionMessage('Geef locatie-toegang om poezen bij jou in de buurt te zien.');
+            setPermissionMessage('Zet locatie aan om poezen dichter bij jou te tonen.');
+            setIsLoadingLocation(false);
           }
           return;
         }
@@ -53,10 +52,12 @@ export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: Poe
             longitudeDelta: 0.04,
           });
           setPermissionMessage('');
+          setIsLoadingLocation(false);
         }
       } catch {
         if (isMounted) {
-          setPermissionMessage('Locatie is nu niet beschikbaar. We tonen Amsterdam als startpunt.');
+          setPermissionMessage('Locatie is nu niet beschikbaar. We starten in Amsterdam.');
+          setIsLoadingLocation(false);
         }
       }
     }
@@ -73,23 +74,49 @@ export default function PoezenMap({ selectedCatId, sightings, onSelectCat }: Poe
       <MapView
         initialRegion={AMSTERDAM_REGION}
         onRegionChangeComplete={setRegion}
+        onPress={onMapPress}
         region={region}
         showsUserLocation
         style={styles.nativeMap}>
-        {sightings.map((cat) => (
-          <Marker
-            coordinate={{ latitude: cat.latitude, longitude: cat.longitude }}
-            key={cat.id}
-            onPress={() => onSelectCat(cat.id)}>
-            <View style={[styles.catPin, selectedCatId === cat.id && styles.catPinSelected]}>
-              <Text style={styles.catPinText}>🐱</Text>
-            </View>
-          </Marker>
-        ))}
+        {cats.map((cat) => {
+          const coordinate = getCatProfileCoordinate(cat);
+
+          if (!coordinate) {
+            return null;
+          }
+
+          const photoUri = getCatPrimaryPhotoUri(cat);
+
+          return (
+            <Marker
+              coordinate={coordinate}
+              key={cat.id}
+              onPress={(event) => {
+                event.stopPropagation();
+                onSelectCat(cat.id);
+              }}>
+              <View style={[styles.catPin, selectedCatId === cat.id && styles.catPinSelected]}>
+                {photoUri ? (
+                  <Image source={{ uri: photoUri }} style={styles.catPinImage} />
+                ) : (
+                  <Text style={styles.catPinText}>🐱</Text>
+                )}
+                <View style={styles.catPinTail} />
+              </View>
+            </Marker>
+          );
+        })}
       </MapView>
+
+      {isLoadingLocation ? (
+        <View style={styles.locationPill}>
+          <Text style={styles.locationPillText}>Locatie ophalen...</Text>
+        </View>
+      ) : null}
 
       {permissionMessage ? (
         <View style={styles.permissionBanner}>
+          <Text style={styles.permissionTitle}>Locatie uit</Text>
           <Text style={styles.permissionText}>{permissionMessage}</Text>
         </View>
       ) : null}
@@ -102,9 +129,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 360,
     overflow: 'hidden',
-    borderRadius: 30,
-    backgroundColor: '#d9efe4',
-    borderColor: '#badbca',
+    borderRadius: 28,
+    backgroundColor: '#e8efe9',
+    borderColor: '#d7ded9',
     borderWidth: 1,
     position: 'relative',
   },
@@ -115,43 +142,80 @@ const styles = StyleSheet.create({
   catPin: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderColor: '#f0a64f',
-    borderRadius: 24,
-    borderWidth: 3,
-    height: 48,
+    borderColor: '#ffffff',
+    borderRadius: 22,
+    borderWidth: 2,
+    height: 44,
     justifyContent: 'center',
-    shadowColor: '#5e3a22',
+    shadowColor: '#1f2933',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
-    shadowRadius: 10,
-    width: 48,
+    shadowRadius: 12,
+    width: 44,
   },
   catPinSelected: {
-    backgroundColor: '#ffe0b5',
-    borderColor: '#d86931',
-    transform: [{ scale: 1.08 }],
+    backgroundColor: '#ff8f3d',
+    borderColor: '#ffffff',
+    transform: [{ scale: 1.12 }],
+  },
+  catPinImage: {
+    borderRadius: 18,
+    height: 36,
+    width: 36,
   },
   catPinText: {
-    fontSize: 24,
+    fontSize: 23,
   },
-  permissionBanner: {
+  catPinTail: {
     backgroundColor: '#ffffff',
-    borderColor: '#f0ded1',
-    borderRadius: 18,
-    borderWidth: 1,
-    left: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    bottom: -4,
+    height: 10,
     position: 'absolute',
-    right: 16,
+    transform: [{ rotate: '45deg' }],
+    width: 10,
+  },
+  locationPill: {
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    position: 'absolute',
     top: 16,
-    shadowColor: '#7a4a2d',
+    shadowColor: '#1f2933',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.12,
     shadowRadius: 14,
   },
+  locationPillText: {
+    color: '#4d5a53',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  permissionBanner: {
+    backgroundColor: '#ffffff',
+    borderColor: '#eadfd6',
+    borderRadius: 18,
+    borderWidth: 1,
+    left: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    position: 'absolute',
+    right: 16,
+    top: 16,
+    shadowColor: '#1f2933',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+  },
+  permissionTitle: {
+    color: '#2f2b28',
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 2,
+  },
   permissionText: {
-    color: '#6c5144',
+    color: '#6c625b',
     fontSize: 13,
     fontWeight: '700',
     lineHeight: 18,

@@ -34,6 +34,14 @@
         }
       ],
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Sta Poezenradar toe je foto's te kiezen voor een poezenmelding.",
+          "cameraPermission": "Sta Poezenradar toe je camera te gebruiken om een poes te fotograferen.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
